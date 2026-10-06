@@ -19,8 +19,11 @@
 </head>
 <body class="bg-strobe text-white min-h-screen flex flex-col p-6 relative overflow-hidden">
 
-    <!-- Siren Audio -->
-    <audio id="siren-audio" loop src="/assets/alert-sound.mp3"></audio>
+    <!-- ============================================================== -->
+    <!-- 🔊 REPLACE THE "src" LINK BELOW WITH YOUR SIREN AUDIO URL 🔊   -->
+    <!-- ============================================================== -->
+    <audio id="siren-audio" loop src="https://www.image2url.com/r2/default/audio/1791277300366-3eec4f7b-8005-434a-88f8-c01e05bc0f08.mp3"></audio>
+    <!-- ============================================================== -->
 
     <!-- Overlay pattern -->
     <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_transparent_0%,_#000_100%)] pointer-events-none"></div>
@@ -63,14 +66,92 @@
         </button>
     </div>
 
-    <!-- Keep the exact same JavaScript block you currently have for emergency.html here -->
+    <!-- Firebase Logic -->
     <script type="module">
         import { db, auth } from './js/config.js';
         import { doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ... (Your exact same JS code from earlier for emergency.html)
-        // Note: For brevity in display, just paste the <script> logic from the previous step here. 
-        // It remains 100% compatible.
+        // Get Event ID from URL params (passed via FCM push payload)
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('id');
+
+        const siren = document.getElementById('siren-audio');
+        
+        // Browsers require interaction to play sound. Trigger it on the first tap anywhere.
+        document.body.addEventListener('click', () => { 
+            if(siren.paused) { siren.play().catch(e => console.warn("Audio play blocked by browser:", e)); } 
+        }, { once: true });
+
+        // Silence button logic
+        document.getElementById('btn-silence').addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent triggering the body click again
+            siren.pause();
+            document.getElementById('btn-silence').innerText = "Alarm Silenced";
+        });
+
+        // Load emergency data
+        async function loadEmergency() {
+            if(!eventId) return;
+            const docSnap = await getDoc(doc(db, "sosEvents", eventId));
+            if(docSnap.exists()) {
+                const data = docSnap.data();
+                
+                // Set the time
+                if (data.timestamp) {
+                    const date = data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
+                    document.getElementById('sos-time').innerText = "Time: " + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+
+                // Fetch User Details
+                const userSnap = await getDoc(doc(db, "users", data.userId));
+                if(userSnap.exists()){
+                    const user = userSnap.data();
+                    document.getElementById('victim-name').innerText = user.name;
+                    document.getElementById('btn-call').href = `tel:${user.phone}`;
+                }
+
+                // Map Setup
+                if(data.location && data.location.available) {
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${data.location.lat},${data.location.lng}`;
+                    document.getElementById('btn-map').href = mapUrl;
+                } else {
+                    document.getElementById('btn-map').innerHTML = "📍 LOCATION UNAVAILABLE";
+                    document.getElementById('btn-map').classList.replace('bg-gray-900', 'bg-gray-500');
+                    document.getElementById('btn-map').style.pointerEvents = 'none';
+                }
+            }
+        }
+
+        // Respond Button Logic
+        document.getElementById('btn-respond').addEventListener('click', async () => {
+            siren.pause(); // Stop sound when responding
+            const user = auth.currentUser;
+            if(!user) return alert("Please login first.");
+            
+            // Acknowledge the SOS in Firestore
+            try {
+                await updateDoc(doc(db, "sosEvents", eventId), {
+                    responses: arrayUnion({
+                        guardianId: user.uid,
+                        status: "RESPONDING",
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                document.getElementById('btn-respond').innerText = "RESPONDING RECORDED ✅";
+                document.getElementById('btn-respond').classList.replace('bg-green-500', 'bg-gray-800');
+                document.getElementById('btn-respond').classList.replace('border-green-300', 'border-gray-600');
+                document.getElementById('btn-respond').style.pointerEvents = 'none';
+            } catch (err) {
+                console.error("Error updating response:", err);
+                alert("Error recording your response. Please check your connection.");
+            }
+        });
+
+        // Initialize when auth state is ready
+        auth.onAuthStateChanged(user => {
+            if(user) loadEmergency();
+        });
     </script>
 </body>
 </html>
