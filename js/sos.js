@@ -135,3 +135,17 @@ function resetUI() {
     document.getElementById('response-status').innerText = "Waiting for family response...";
     document.getElementById('response-status').classList.replace('text-green-400', 'text-yellow-400');
         }
+import { requestNotificationPermission } from './js/fcm.js';
+import { auth } from './js/config.js';
+
+// Wait for Auth to load, then request permissions
+auth.onAuthStateChanged(user => {
+    if(user) {
+        // Wait 2 seconds so the UI loads before showing the system prompt
+        setTimeout(() => {
+            requestNotificationPermission();
+        }, 2000);
+    } else {
+        window.location.replace('index.html');
+    }
+});
