@@ -11,20 +11,14 @@ const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
 const errorMsg = document.getElementById('auth-error');
 const authContainer = document.getElementById('auth-container');
-
-// Create a loading text
-const loadingOverlay = document.createElement('div');
-loadingOverlay.innerHTML = '<p class="text-red-500 font-bold tracking-widest animate-pulse text-center mt-10 uppercase">Loading Session...</p>';
-authContainer.parentNode.insertBefore(loadingOverlay, authContainer);
-
-// Hide forms initially while checking if user is already logged in
-authContainer.style.display = 'none';
+const sessionLoader = document.getElementById('session-loader');
 
 // Toggle UI
 document.getElementById('toggle-register').addEventListener('click', (e) => {
     e.preventDefault();
     loginForm.classList.add('hidden');
     registerForm.classList.remove('hidden');
+    registerForm.classList.add('animate-fade-in');
     errorMsg.classList.add('hidden');
 });
 
@@ -32,23 +26,27 @@ document.getElementById('toggle-login').addEventListener('click', (e) => {
     e.preventDefault();
     registerForm.classList.add('hidden');
     loginForm.classList.remove('hidden');
+    loginForm.classList.add('animate-fade-in');
     errorMsg.classList.add('hidden');
 });
 
 function showError(msg) {
     errorMsg.innerText = msg;
     errorMsg.classList.remove('hidden');
+    errorMsg.classList.add('animate-fade-in');
 }
 
 // AUTO-LOGIN CHECKER
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // User is logged in, redirect them immediately to dashboard!
+        // User is logged in! Redirecting...
         window.location.replace('dashboard.html');
     } else {
-        // User is definitely NOT logged in. Show the login form.
-        loadingOverlay.style.display = 'none';
-        authContainer.style.display = 'block';
+        // User is NOT logged in.
+        // Hide the professional spinner and show the login form smoothly
+        sessionLoader.classList.add('hidden');
+        authContainer.classList.remove('hidden');
+        authContainer.classList.add('animate-fade-in');
     }
 });
 
@@ -63,7 +61,7 @@ loginForm.addEventListener('submit', async (e) => {
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-password').value;
         await signInWithEmailAndPassword(auth, email, pass);
-        // Page will auto-redirect via onAuthStateChanged
+        // Firebase onAuthStateChanged will handle the redirect automatically
     } catch (error) {
         showError(error.message.replace('Firebase: ', ''));
         btn.innerText = "SECURE LOGIN";
@@ -97,7 +95,7 @@ registerForm.addEventListener('submit', async (e) => {
             fcmTokens: []     
         });
 
-        // Page will auto-redirect via onAuthStateChanged
+        // Firebase onAuthStateChanged will handle the redirect automatically
     } catch (error) {
         showError(error.message.replace('Firebase: ', ''));
         btn.innerText = "REGISTER ACCOUNT";
