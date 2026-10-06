@@ -10,6 +10,15 @@ import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
 const errorMsg = document.getElementById('auth-error');
+const authContainer = document.getElementById('auth-container');
+
+// Create a loading text
+const loadingOverlay = document.createElement('div');
+loadingOverlay.innerHTML = '<p class="text-red-500 font-bold tracking-widest animate-pulse text-center mt-10 uppercase">Loading Session...</p>';
+authContainer.parentNode.insertBefore(loadingOverlay, authContainer);
+
+// Hide forms initially while checking if user is already logged in
+authContainer.style.display = 'none';
 
 // Toggle UI
 document.getElementById('toggle-register').addEventListener('click', (e) => {
@@ -26,33 +35,38 @@ document.getElementById('toggle-login').addEventListener('click', (e) => {
     errorMsg.classList.add('hidden');
 });
 
-// Auto-redirect if already logged in
-onAuthStateChanged(auth, (user) => {
-    if (user && window.location.pathname.includes('index.html')) {
-        window.location.replace('dashboard.html');
-    }
-});
-
 function showError(msg) {
     errorMsg.innerText = msg;
     errorMsg.classList.remove('hidden');
 }
 
+// AUTO-LOGIN CHECKER
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // User is logged in, redirect them immediately to dashboard!
+        window.location.replace('dashboard.html');
+    } else {
+        // User is definitely NOT logged in. Show the login form.
+        loadingOverlay.style.display = 'none';
+        authContainer.style.display = 'block';
+    }
+});
+
 // Handle Login
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btn-login');
-    btn.innerText = "LOADING...";
+    btn.innerText = "VERIFYING...";
     btn.disabled = true;
 
     try {
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-password').value;
         await signInWithEmailAndPassword(auth, email, pass);
-        window.location.replace('dashboard.html');
+        // Page will auto-redirect via onAuthStateChanged
     } catch (error) {
         showError(error.message.replace('Firebase: ', ''));
-        btn.innerText = "LOG IN";
+        btn.innerText = "SECURE LOGIN";
         btn.disabled = false;
     }
 });
@@ -61,7 +75,7 @@ loginForm.addEventListener('submit', async (e) => {
 registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btn-register');
-    btn.innerText = "CREATING ACCOUNT...";
+    btn.innerText = "CREATING...";
     btn.disabled = true;
 
     try {
@@ -79,14 +93,14 @@ registerForm.addEventListener('submit', async (e) => {
             name: name,
             email: email,
             phone: phone,
-            linkedFamily: [], // Array of trusted Guardian UIDs
-            fcmTokens: []     // Devices where push notifications go
+            linkedFamily: [], 
+            fcmTokens: []     
         });
 
-        window.location.replace('dashboard.html');
+        // Page will auto-redirect via onAuthStateChanged
     } catch (error) {
         showError(error.message.replace('Firebase: ', ''));
-        btn.innerText = "CREATE ACCOUNT";
+        btn.innerText = "REGISTER ACCOUNT";
         btn.disabled = false;
     }
 });
