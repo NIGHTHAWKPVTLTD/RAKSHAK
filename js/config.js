@@ -4,12 +4,13 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth
 import { getMessaging } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY", // Replace with Vercel Environment Variables injected during build, or config
-    authDomain: "rakshak-app.firebaseapp.com",
-    projectId: "rakshak-app",
-    storageBucket: "rakshak-app.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyC0PCn9byajsxg9zCKGWjTj08dhNczt2j8",
+  authDomain: "rakshak-2-29a5d.firebaseapp.com",
+  projectId: "rakshak-2-29a5d",
+  storageBucket: "rakshak-2-29a5d.firebasestorage.app",
+  messagingSenderId: "67575609457",
+  appId: "1:67575609457:web:2b2bf13c2ecb0b1df643d0",
+  measurementId: "G-EZYVE41636"
 };
 
 const app = initializeApp(firebaseConfig);
