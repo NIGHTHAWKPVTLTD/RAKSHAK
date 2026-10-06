@@ -106,25 +106,29 @@ auth.onAuthStateChanged((user) => {
                 const familyIds = data.linkedFamily || [];
                 
                 if (familyIds.length === 0) {
-                    guardianList.innerHTML = `<p class="text-sm text-gray-500 text-center italic">No guardians connected yet.</p>`;
+                    guardianList.innerHTML = `<p class="text-sm text-gray-600 text-center italic py-4">No guardians connected yet.</p>`;
                     return;
                 }
 
-                // Fetch details for each connected family member
+                // Fetch details for each connected family member safely
                 for(let gUid of familyIds) {
-                    const gSnap = await getDoc(doc(db, "users", gUid));
-                    if(gSnap.exists()) {
-                        const gData = gSnap.data();
-                        const card = document.createElement('div');
-                        card.className = "bg-gray-800 p-4 rounded-lg flex justify-between items-center border border-gray-700";
-                        card.innerHTML = `
-                            <div>
-                                <p class="font-bold text-white">${gData.name}</p>
-                                <p class="text-xs text-gray-400">${gData.phone}</p>
-                            </div>
-                            <span class="text-xs font-bold px-2 py-1 bg-green-900/50 text-green-400 rounded">ACTIVE</span>
-                        `;
-                        guardianList.appendChild(card);
+                    try {
+                        const gSnap = await getDoc(doc(db, "users", gUid));
+                        if(gSnap.exists()) {
+                            const gData = gSnap.data();
+                            const card = document.createElement('div');
+                            card.className = "bg-gray-800/80 p-4 rounded-xl flex justify-between items-center border border-gray-700 shadow-md";
+                            card.innerHTML = `
+                                <div>
+                                    <p class="font-bold text-white tracking-wide">${gData.name}</p>
+                                    <p class="text-xs text-gray-400 mt-1">${gData.phone}</p>
+                                </div>
+                                <span class="text-[10px] font-bold px-3 py-1.5 bg-green-900/40 border border-green-500/30 text-green-400 rounded-lg uppercase tracking-wider">ACTIVE</span>
+                            `;
+                            guardianList.appendChild(card);
+                        }
+                    } catch (error) {
+                        console.error("Could not load guardian:", error);
                     }
                 }
             }
