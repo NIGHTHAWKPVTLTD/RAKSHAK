@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAKSHAK | EMERGENCY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-red-600 text-white min-h-screen flex flex-col p-6 font-sans">
+
+    <!-- Siren Audio (Must be interacted with to play on modern browsers) -->
+    <audio id="siren-audio" loop src="/assets/alert-sound.mp3"></audio>
+
+    <div class="flex-grow flex flex-col items-center justify-center text-center">
+        <h1 class="text-5xl font-black mb-4 animate-pulse">🚨 EMERGENCY</h1>
+        <p class="text-xl mb-8">A protected family member needs immediate help.</p>
+        
+        <div class="bg-white text-gray-900 w-full max-w-sm rounded-xl p-6 shadow-2xl mb-8">
+            <h2 id="victim-name" class="text-2xl font-bold mb-2">Loading...</h2>
+            <p id="sos-time" class="text-sm text-gray-500 mb-4">Time: --</p>
+            
+            <div class="flex flex-col gap-3">
+                <a id="btn-call" href="#" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center justify-center">
+                    📞 CALL NOW
+                </a>
+                <a id="btn-map" href="#" target="_blank" class="w-full py-3 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-lg flex items-center justify-center">
+                    📍 VIEW ON MAP
+                </a>
+            </div>
+        </div>
+
+        <button id="btn-respond" class="w-full max-w-sm py-4 bg-green-500 hover:bg-green-600 text-white text-xl font-bold rounded-xl shadow-xl border-2 border-green-300">
+            ✅ I'M RESPONDING
+        </button>
+        
+        <button id="btn-silence" class="mt-8 opacity-70 underline">Silence Alarm</button>
+    </div>
+
+    <script type="module">
+        import { db, auth } from './js/config.js';
+        import { doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Get Event ID from URL params (passed via FCM push payload)
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('id');
+
+        const siren = document.getElementById('siren-audio');
+        
+        // Browsers require interaction to play sound. We trigger it on the first tap anywhere.
+        document.body.addEventListener('click', () => { 
+            if(siren.paused) { siren.play(); } 
+        }, { once: true });
+
+        document.getElementById('btn-silence').addEventListener('click', () => siren.pause());
+
+        async function loadEmergency() {
+            if(!eventId) return;
+            const docSnap = await getDoc(doc(db, "sosEvents", eventId));
+            if(docSnap.exists()) {
+                const data = docSnap.data();
+                
+                // Fetch User Details
+                const userSnap = await getDoc(doc(db, "users", data.userId));
+                if(userSnap.exists()){
+                    const user = userSnap.data();
+                    document.getElementById('victim-name').innerText = user.name;
+                    document.getElementById('btn-call').href = `tel:${user.phone}`;
+                }
+
+                // Map Setup
+                if(data.location && data.location.available) {
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${data.location.lat},${data.location.lng}`;
+                    document.getElementById('btn-map').href = mapUrl;
+                } else {
+                    document.getElementById('btn-map').innerText = "📍 LOCATION UNAVAILABLE";
+                    document.getElementById('btn-map').classList.replace('bg-gray-800', 'bg-gray-400');
+                    document.getElementById('btn-map').style.pointerEvents = 'none';
+                }
+            }
+        }
+
+        document.getElementById('btn-respond').addEventListener('click', async () => {
+            siren.pause(); // Stop sound
+            const user = auth.currentUser;
+            if(!user) return alert("Please login first.");
+            
+            // Acknowledge the SOS
+            await updateDoc(doc(db, "sosEvents", eventId), {
+                responses: arrayUnion({
+                    guardianId: user.uid,
+                    status: "RESPONDING",
+                    timestamp: new Date().toISOString()
+                })
+            });
+
+            document.getElementById('btn-respond').innerText = "RESPONDING RECORDED";
+            document.getElementById('btn-respond').classList.replace('bg-green-500', 'bg-gray-600');
+        });
+
+        auth.onAuthStateChanged(user => {
+            if(user) loadEmergency();
+        });
+    </script>
+</body>
+</html>
